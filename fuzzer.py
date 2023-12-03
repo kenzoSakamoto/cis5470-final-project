@@ -34,13 +34,13 @@ def run_command(file, input):
         # Call mutation function
         with open(report_file) as report:
             coverage_data = json.load(report)
-            mutator(result.returncode, coverage_data)
+            mutator(result.returncode, coverage_data, input)
             available_files.put(file)
         return result
     except subprocess.CalledProcessError as e:
         print(f"Error executing command '{file}':\n{e.stderr}")
 
-def mutator(return_code, coverage_data):
+def mutator(return_code, coverage_data, input):
     # TODO: Modify `INPUTS` list based on the test results
     # See example 'sample_report.json' to get schema
 
