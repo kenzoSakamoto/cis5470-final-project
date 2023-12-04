@@ -6,6 +6,7 @@ import time
 import queue
 import random
 
+import mutations
 from utils import *
 
 FILE_COPIES = []
@@ -88,6 +89,9 @@ def main():
 
             # Get next input
             next_input = get_next_input()
+
+            # Mutate input
+            next_input = mutations.select_mutation_function()(next_input)
 
             # Submit each command to the ThreadPoolExecutor
             futures.append(executor.submit(run_command, cur_file, next_input))
