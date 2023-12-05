@@ -28,6 +28,8 @@ def mutationC(seed: str)->str:
 
 def mutationD(seed: str)->str:
     """Replace bytes with random values"""
+    if (len(seed) <= 0):
+        seed = choice(string.ascii_letters)
     for i in range(randint(0, len(seed))):
         seed = mutationC(mutationA(seed))
     return seed
@@ -41,6 +43,8 @@ def mutationE(seed: str)->str:
 
 def mutationF(seed: str)->str:
     """Return a random length slice of the string from any index"""
+    if (len(seed) <= 0):
+        return choice(string.digits)
     r = randint(0, len(seed) - 1)
     return seed[r:]
 
