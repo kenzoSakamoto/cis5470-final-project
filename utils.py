@@ -70,3 +70,15 @@ def write_inputs(successful, failed, filename):
         for item in failed:
             failed_file.write(f"{item}\n")
             failed_file.write('------------------------------------------\n')
+            
+
+def write_mutations(mutations, filename):
+    # Get the base name of the file
+    base = os.path.basename(filename)
+
+    # Write contents of the cached mutations list to 'results/{base}_mutations.txt'
+    mutation_file_path = f'results/{base}_mutations.txt'
+    with open(mutation_file_path, 'w') as mutation_file:
+        for item in mutations:
+            mutation_file.write(f"{item.__name__}\n")
+            mutation_file.write('------------------------------------------\n')
