@@ -9,9 +9,12 @@ import random
 import mutations
 from utils import *
 
+import feedback as fb
+
 FILE_COPIES = []
 FILE_PATHS = []
-INPUTS = []
+INPUTS = set()
+
 INPUT_DIR = 'inputs/'
 TEST_DIR = 'tests/'
 CWD = os.getcwd()
@@ -19,6 +22,8 @@ CWD = os.getcwd()
 n_fails = 0
 
 available_files = queue.Queue()
+
+feedback = None
 
 def run_command_windows(file, input):
     try:
@@ -66,18 +71,25 @@ def run_command(file, input):
         print(f"Error executing command '{file}':\n{e.stderr}")
 
 def mutator(return_code, coverage_data, input):
-    # TODO: Modify `INPUTS` list based on the test results
-    # See example 'sample_report.json' to get schema
-
-    # Update count of failed tests
     global n_fails
+    global feedback
+    global INPUTS
+    
+    #get coverage data for the test file
+    cov = [c for c in coverage_data["files"].values()]
+        
+    # Update count of failed tests, get feedback and update inputs
     if return_code != 0:
         n_fails += 1
-
-
+        feedback.update(cov[0])
+        INPUTS.add(input)
+    elif feedback.get_feedback(cov[0]):
+        INPUTS.add(input)
+    
+        
 def get_next_input():
     # TODO: Select next input to run test on
-    return random.choice(INPUTS)
+    return random.choice(list(INPUTS))
 
 def main():
     parser = argparse.ArgumentParser()
@@ -86,6 +98,9 @@ def main():
     parser.add_argument("--timeout", type=int, default=5, help="Duration of fuzzing")
     args = parser.parse_args()
 
+    global feedback
+    feedback = fb.fuzzerFeedback()
+    
     # Create temporary copies so we can parallelize the execution
     # Copies needed because only one worker can execute the same test file at a time
     for _ in range(args.workers):
@@ -97,7 +112,7 @@ def main():
 
     # Read starting inputs from directory
     for input in read_inputs(INPUT_DIR):
-        INPUTS.append(input)
+        INPUTS.add(input)
 
     # Populate the available files queue
     for file in FILE_PATHS:
@@ -135,7 +150,11 @@ def main():
 
     # Delete data files and reports
     cleanup(available_files)
-
+    print("Final Inputs: ", INPUTS)
+    print("Feedback: ", 
+          "\n  lines covered: ", feedback.lines, 
+          "\n  branches covered: ", feedback.branches, 
+          "\n  highest coverage: ", feedback.percentage ,"%")
     print(f'Found {n_fails} fails')
 
 if __name__ == "__main__":
