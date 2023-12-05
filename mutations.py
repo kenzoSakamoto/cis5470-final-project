@@ -19,12 +19,12 @@ def mutationC(seed: str)->str:
     """Insert a random byte"""
     l = len(seed)
     r = randint(0, l - 1)
-    return seed[:r] + choice(string.printable) + seed[r:]
+    return seed[:r] + choice(string.ascii_letters) + seed[r:]
 
 def mutationD(seed: str)->str:
     """Replace bytes with random values"""
     for i in range(randint(0, len(seed))):
-        seed = mutationC(mutationA(seed)) 
+        seed = mutationC(mutationA(seed))
     return seed
 
 def mutationE(seed: str)->str:
@@ -37,7 +37,7 @@ MUTATIONS_LIST = [mutationA,
              mutationB,
              mutationC,
              mutationD,
-             mutationE,]
+             ]
 
 def select_mutation_function():
     return choice(MUTATIONS_LIST)
