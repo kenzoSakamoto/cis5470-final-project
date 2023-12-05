@@ -58,7 +58,7 @@ def mutationH(seed: str)->str:
 def mutationI(seed: str)->str:
     """Replace a random character in a string with a random character"""
     l = choice(string.digits + string.ascii_letters)
-    if (l <= 0):
+    if (len(seed) <= 0):
         return choice(string.ascii_letters)
     r = randint(0, len(seed) - 1)
     return seed.replace(seed[r], l)
