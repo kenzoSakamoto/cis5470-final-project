@@ -168,7 +168,6 @@ def main():
     cleanup(available_files)
     progress_bar.close()
     write_inputs(SUCCESSFUL_INPUTS, FAILED_INPUTS, args.test)
-    print("Final Inputs: ", INPUTS)
     print(f"Tested {len(SUCCESSFUL_INPUTS) + len(FAILED_INPUTS)} inputs")
     print("Feedback: ",
           "\n  lines covered: ", feedback.lines,
