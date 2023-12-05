@@ -13,8 +13,10 @@ def mutationA(seed: str)->str:
 def mutationB(seed: str)->str:
     """Swap adjacent bytes"""
     l = len(seed)
-    if (l <= 0):
-        return choice(string.ascii_letters)
+    if (l <= 1):
+        return seed + choice(string.ascii_letters)
+    if (l == 2):
+        return seed[1] + seed[0] 
     r = randint(0, l - 2)
     return seed[:r] + seed[r + 1] + seed[r] + seed[r+2:]
 
