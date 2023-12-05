@@ -27,19 +27,36 @@ def mutationD(seed: str)->str:
     return seed
 
 def mutationE(seed: str)->str:
-    """Return a random permutation of the string. An expensive for longer seeds"""
-    p = list(permutations(seed))
-    r = randint(0, len(p) - 1)
-    return "".join(p[r])
+    """Return a random length slice of the string from index 0"""
+    r = randint(0, len(seed) - 1)
+    return seed[:r]
+
+def mutationF(seed: str)->str:
+    """Return a random length slice of the string from any index"""
+    r = randint(0, len(seed) - 1)
+    return seed[r:]
+
+def mutationG(seed: str)->str:
+    """Concatanate a string with itself"""
+    return seed + seed
+
+def mutationH(seed: str)->str:
+    """Concatanate a string with its slice from index 0"""
+    r = randint(0, len(seed) - 1)
+    return seed + seed[r:]  
 
 class Mutations():
     def __init__(self):
         self.successfullMutations = set()
         self.MUTATIONS_LIST = [mutationA,
-                mutationB,
-                mutationC,
-                mutationD,
-                ]
+             mutationB,
+             mutationC,
+             mutationD,
+             mutationE,
+             mutationF,
+             mutationG,
+             mutationH
+             ]
 
     def update_mutations(self, mutation):
         """Adds mutation function  to set of successful mutation
