@@ -24,7 +24,7 @@ def mutationC(seed: str)->str:
 def mutationD(seed: str)->str:
     """Replace bytes with random values"""
     for i in range(randint(0, len(seed))):
-        seed = mutationC(mutationA(seed)) 
+        seed = mutationC(mutationA(seed))
     return seed
 
 def mutationE(seed: str)->str:
