@@ -19,7 +19,7 @@ def mutationC(seed: str)->str:
     """Insert a random byte"""
     l = len(seed)
     r = randint(0, l - 1)
-    return seed[:r] + choice(string.ascii_letters) + seed[r:]
+    return seed[:r] + choice(string.ascii_letters + string.digits) + seed[r:]
 
 def mutationD(seed: str)->str:
     """Replace bytes with random values"""
