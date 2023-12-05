@@ -105,7 +105,6 @@ def update(return_code, coverage_data, input, mutationFn):
 
 
 def get_next_input():
-    # TODO: Select next input to run test on
     return random.choice(list(INPUTS))
 
 def main():
@@ -120,7 +119,7 @@ def main():
 
     global mutator
     mutator = mt.Mutations()
-    
+
     # Create temporary copies so we can parallelize the execution
     # Copies needed because only one worker can execute the same test file at a time
     for _ in range(args.workers):
@@ -144,7 +143,7 @@ def main():
 
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
         progress_bar = tqdm(total=args.timeout, desc="Fuzzing Progress", unit="ticks")
-        while time.time() - START_TIME < args.timeout:
+        while ELAPSED_TIME < args.timeout:
             LATEST_TIME = time.time()
             # Gets next available file or blocks until a new one is enqueued
             cur_file = available_files.get(block=True)
@@ -154,7 +153,7 @@ def main():
 
             # Get next mutator
             mutationFn = mutator.select_mutation_function()
-            
+
             # Mutate input
             next_input = mutationFn(next_input)
 
@@ -165,8 +164,9 @@ def main():
                 futures.append(executor.submit(run_command, cur_file, next_input, mutationFn))
 
             prev = ELAPSED_TIME
-            ELAPSED_TIME += time.time() - LATEST_TIME
-            progress_bar.update(time.time() - LATEST_TIME if ELAPSED_TIME <= args.timeout else args.timeout - prev)
+            delta = time.time() - LATEST_TIME
+            ELAPSED_TIME += delta
+            progress_bar.update(delta if ELAPSED_TIME <= args.timeout else args.timeout - prev)
 
         # Wait for all remaining to complete
         for future in futures:
