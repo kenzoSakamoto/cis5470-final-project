@@ -60,7 +60,8 @@ MUTATIONS_LIST = [mutationA,
              mutationE,
              mutationF,
              mutationG,
-             mutationH
+             mutationH,
+             mutationI
              ]
 
 def select_mutation_function():
