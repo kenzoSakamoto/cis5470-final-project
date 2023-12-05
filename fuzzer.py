@@ -7,7 +7,7 @@ import queue
 import random
 from tqdm import tqdm
 
-import mutations
+import mutations as mt
 from utils import *
 
 import feedback as fb
@@ -28,8 +28,9 @@ n_fails = 0
 available_files = queue.Queue()
 
 feedback = None
+mutator = None
 
-def run_command_windows(file, input):
+def run_command_windows(file, input, mutationFn):
     try:
         # Get basename for files
         base, _ = os.path.splitext(os.path.basename(file))
@@ -42,16 +43,16 @@ def run_command_windows(file, input):
         # Get report in json format and write it to report_file
         cov = subprocess.run(['coverage', 'json', '--pretty', '--data-file', data_file, '-o', report_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
-        # Call mutation function
+        # Call update function
         with open(report_file) as report:
             coverage_data = json.load(report)
-            mutator(result.returncode, coverage_data, input, result)
+            update(result.returncode, coverage_data, input, mutationFn)
         available_files.put(file)
         return result
     except subprocess.CalledProcessError as e:
         print(f"Error executing command '{file}':\n{e.stderr}")
 
-def run_command(file, input):
+def run_command(file, input, mutationFn):
     try:
         # Get basename for files
         base, _ = os.path.splitext(os.path.basename(file))
@@ -64,19 +65,20 @@ def run_command(file, input):
         # Get report in json format and write it to report_file
         cov = subprocess.run([f'coverage json --pretty --data-file "{data_file}" -o "{report_file}"'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
-        # Call mutation function
+        # Call update function
         with open(report_file) as report:
             coverage_data = json.load(report)
-            mutator(result.returncode, coverage_data, input, result)
+            update(result.returncode, coverage_data, input, mutationFn)
 
         available_files.put(file)
         return result
     except subprocess.CalledProcessError as e:
         print(f"Error executing command '{file}':\n{e.stderr}")
 
-def mutator(return_code, coverage_data, input, result):
+def update(return_code, coverage_data, input, mutationFn):
     global n_fails
     global feedback
+    global mutator
     global INPUTS
     global FAILED_INPUTS
     global SUCCESSFUL_INPUTS
@@ -90,10 +92,12 @@ def mutator(return_code, coverage_data, input, result):
         FAILED_INPUTS.append(input)
         feedback.update(cov[0])
         INPUTS.add(input)
+        mutator.update_mutations(mutationFn)
     else:
         SUCCESSFUL_INPUTS.append(input)
         if feedback.get_feedback(cov[0]):
             INPUTS.add(input)
+            mutator.update_mutations(mutationFn)
 
 
 def get_next_input():
@@ -110,6 +114,9 @@ def main():
     global feedback
     feedback = fb.fuzzerFeedback()
 
+    global mutator
+    mutator = mt.Mutations()
+    
     # Create temporary copies so we can parallelize the execution
     # Copies needed because only one worker can execute the same test file at a time
     for _ in range(args.workers):
@@ -141,16 +148,17 @@ def main():
             # Get next input
             next_input = get_next_input()
 
+            # Get next mutator
+            mutationFn = mutator.select_mutation_function()
+            
             # Mutate input
-            # print('Mutating..')
-            next_input = mutations.select_mutation_function()(next_input)
-            # print('Done mutating..')
+            next_input = mutationFn(next_input)
 
             # Submit each command to the ThreadPoolExecutor
             if platform.system() == 'Windows':
-                futures.append(executor.submit(run_command_windows, cur_file, next_input))
+                futures.append(executor.submit(run_command_windows, cur_file, next_input, mutationFn))
             else:
-                futures.append(executor.submit(run_command, cur_file, next_input))
+                futures.append(executor.submit(run_command, cur_file, next_input, mutationFn))
 
             prev = ELAPSED_TIME
             ELAPSED_TIME += time.time() - LATEST_TIME
