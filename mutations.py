@@ -18,7 +18,7 @@ def mutationC(seed: str)->str:
     """Insert a random byte"""
     l = len(seed)
     r = randint(0, l - 1)
-    return seed[:r] + choice(string.ascii_letters) + seed[r:]
+    return seed[:r] + choice(string.ascii_letters + string.digits) + seed[r:]
 
 def mutationD(seed: str)->str:
     """Replace bytes with random values"""
@@ -45,6 +45,12 @@ def mutationH(seed: str)->str:
     r = randint(0, len(seed) - 1)
     return seed + seed[r:]  
 
+def mutationI(seed: str)->str:
+    """Replace a random character in a string with a random character"""
+    l = choice(string.digits + string.ascii_letters)
+    r = randint(0, len(seed) - 1)
+    return seed.replace(seed[r], l)
+
 class Mutations():
     def __init__(self):
         self.successfullMutations = set()
@@ -55,7 +61,8 @@ class Mutations():
              mutationE,
              mutationF,
              mutationG,
-             mutationH
+             mutationH,
+             mutationI
              ]
 
     def update_mutations(self, mutation):
