@@ -1,6 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 import argparse
-import os, subprocess
+import os, subprocess, platform
 import json
 import time
 import queue
@@ -20,12 +20,32 @@ n_fails = 0
 
 available_files = queue.Queue()
 
+def run_command_windows(file, input):
+    try:
+        # Get basename for files
+        base, _ = os.path.splitext(os.path.basename(file))
+        data_file = base + '.coverage'
+        report_file = base + '.json'
+
+        # Run test with branch coverage, and write coverage data to data_file
+        result = subprocess.run(['coverage', 'run', '--branch', '--data-file', data_file, file, input], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+        # Get report in json format and write it to report_file
+        cov = subprocess.run(['coverage', 'json', '--pretty', '--data-file', data_file, '-o', report_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+        # Call mutation function
+        with open(report_file) as report:
+            coverage_data = json.load(report)
+            mutator(result.returncode, coverage_data, input)
+            available_files.put(file)
+        return result
+    except subprocess.CalledProcessError as e:
+        print(f"Error executing command '{file}':\n{e.stderr}")
+
 def run_command(file, input):
     try:
         # Get basename for files
         base, _ = os.path.splitext(os.path.basename(file))
-        print("root", base)
-        print("ext", _)
         data_file = os.path.join(CWD, base + ".coverage")
         report_file = os.path.join(CWD, base + ".json")
 
@@ -107,7 +127,10 @@ def main():
             print("next_input:", next_input)
 
             # Submit each command to the ThreadPoolExecutor
-            futures.append(executor.submit(run_command, cur_file, next_input))
+            if platform.system() == 'Windows':
+                futures.append(executor.submit(run_command_windows, cur_file, next_input))
+            else:
+                futures.append(executor.submit(run_command, cur_file, next_input))
 
         # Wait for all remaining to complete
         for future in futures:
