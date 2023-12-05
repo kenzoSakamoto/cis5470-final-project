@@ -69,6 +69,18 @@ def mutationI(seed: str)->str:
     r = randint(0, len(seed) - 1)
     return seed.replace(seed[r], l)
 
+def mutationZ(seed: str)->str:
+    """Introducing the supermutation"""
+    return mutationA(
+        mutationB(
+            mutationC(
+                mutationD(
+                    mutationE(
+                        mutationF(
+                            mutationG(
+                                mutationH(
+                                    mutationI(seed)))))))))
+
 class Mutations():
     def __init__(self):
         self.successfullMutations = set()
@@ -80,7 +92,8 @@ class Mutations():
              mutationF,
              mutationG,
              mutationH,
-             mutationI
+             mutationI,
+             mutationZ
              ]
 
     def update_mutations(self, mutation):
