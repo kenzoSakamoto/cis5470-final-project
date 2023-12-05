@@ -97,9 +97,9 @@ class Mutations():
              ]
 
     def update_mutations(self, mutation):
-        """Adds mutation function  to set of successful mutation
+        """Adds mutation function to set of successful mutations
            which allows mutation functions that have yielded increased
-           coverage or failure runs to be used more often
+           coverage or failure-runs to be used more often
 
         Args:
             mutation (function): function to add
@@ -107,10 +107,10 @@ class Mutations():
         self.successfullMutations.add(mutation)
         
     def select_mutation_function(self):
-        """Selects then next mutation function to use:
+        """Selects the next mutation function to use:
             if the set of cached mutation functions is non-empty, that means
-            that we have some mutation functions that should be given more preference 
-            and we select from that,
+            we have some mutation functions that should be given more preference 
+            and we select one,
             otherwise we select a random mutation function
 
         Returns:

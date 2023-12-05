@@ -18,6 +18,7 @@ INPUTS = set()
 
 FAILED_INPUTS = []
 SUCCESSFUL_INPUTS = []
+CACHED_MUTATIONS = []
 
 INPUT_DIR = 'inputs/'
 TEST_DIR = 'tests/'
@@ -82,6 +83,7 @@ def update(return_code, coverage_data, input, mutationFn):
     global INPUTS
     global FAILED_INPUTS
     global SUCCESSFUL_INPUTS
+    global CACHED_MUTATIONS
 
     #get coverage data for the test file
     cov = [c for c in coverage_data["files"].values()]
@@ -93,11 +95,13 @@ def update(return_code, coverage_data, input, mutationFn):
         feedback.update(cov[0])
         INPUTS.add(input)
         mutator.update_mutations(mutationFn)
+        CACHED_MUTATIONS.append(mutationFn)
     else:
         SUCCESSFUL_INPUTS.append(input)
         if feedback.get_feedback(cov[0]):
             INPUTS.add(input)
             mutator.update_mutations(mutationFn)
+            CACHED_MUTATIONS.append(mutationFn)
 
 
 def get_next_input():
@@ -175,6 +179,7 @@ def main():
     # Delete data files and reports
     cleanup(available_files)
     progress_bar.close()
+    write_mutations(CACHED_MUTATIONS, args.test)
     write_inputs(SUCCESSFUL_INPUTS, FAILED_INPUTS, args.test)
     print(f"Tested {len(SUCCESSFUL_INPUTS) + len(FAILED_INPUTS)} inputs")
     print("Feedback: ",
