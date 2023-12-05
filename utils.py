@@ -19,7 +19,6 @@ class TemporaryCopy(object):
         new_base_name = f"{base_name}_{unique_id}{file_extension}"
         self.path = os.path.join(temp_dir, new_base_name)
         shutil.copy2(self.original_path, self.path)
-        print("__enter__: self.path", self.path)
         return self.path
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -53,3 +52,21 @@ def cleanup(queue):
             os.remove(data_file)
         if os.path.exists(report_file):
             os.remove(report_file)
+
+def write_inputs(successful, failed, filename):
+    # Get the base name of the file
+    base = os.path.basename(filename)
+
+    # Write contents of the successful list to 'results/{base}_successful.txt'
+    successful_file_path = f'results/{base}_successful.txt'
+    with open(successful_file_path, 'w') as successful_file:
+        for item in successful:
+            successful_file.write(f"{item}\n")
+            successful_file.write('------------------------------------------\n')
+
+    # Write contents of the failed list to 'results/{base}_failed.txt'
+    failed_file_path = f'results/{base}_failed.txt'
+    with open(failed_file_path, 'w') as failed_file:
+        for item in failed:
+            failed_file.write(f"{item}\n")
+            failed_file.write('------------------------------------------\n')

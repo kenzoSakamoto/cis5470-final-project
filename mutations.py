@@ -2,7 +2,6 @@ from random import randint, choice
 import string
 from itertools import permutations
 
-
 def mutationA(seed: str)->str:
     """Remove a random byte"""
     l = len(seed)
@@ -24,7 +23,7 @@ def mutationC(seed: str)->str:
 def mutationD(seed: str)->str:
     """Replace bytes with random values"""
     for i in range(randint(0, len(seed))):
-        seed = mutationC(mutationA(seed)) 
+        seed = mutationC(mutationA(seed))
     return seed
 
 def mutationE(seed: str)->str:
@@ -46,7 +45,10 @@ def mutationH(seed: str)->str:
     r = randint(0, len(seed) - 1)
     return seed + seed[r:]  
 
-MUTATIONS_LIST = [mutationA,
+class Mutations():
+    def __init__(self):
+        self.successfullMutations = set()
+        self.MUTATIONS_LIST = [mutationA,
              mutationB,
              mutationC,
              mutationD,
@@ -56,5 +58,11 @@ MUTATIONS_LIST = [mutationA,
              mutationH
              ]
 
-def select_mutation_function():
-    return choice(MUTATIONS_LIST)
+    def update_mutations(self, mutation):
+        self.successfullMutations.add(mutation)
+        
+    def select_mutation_function(self):
+        if len(self.successfullMutations) > 0:
+            return self.successfullMutations.pop()
+        else:
+            return choice(self.MUTATIONS_LIST)

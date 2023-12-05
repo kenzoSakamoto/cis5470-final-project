@@ -5,13 +5,20 @@ import json
 import time
 import queue
 import random
+from tqdm import tqdm
 
-import mutations
+import mutations as mt
 from utils import *
+
+import feedback as fb
 
 FILE_COPIES = []
 FILE_PATHS = []
-INPUTS = []
+INPUTS = set()
+
+FAILED_INPUTS = []
+SUCCESSFUL_INPUTS = []
+
 INPUT_DIR = 'inputs/'
 TEST_DIR = 'tests/'
 CWD = os.getcwd()
@@ -20,7 +27,10 @@ n_fails = 0
 
 available_files = queue.Queue()
 
-def run_command_windows(file, input):
+feedback = None
+mutator = None
+
+def run_command_windows(file, input, mutationFn):
     try:
         # Get basename for files
         base, _ = os.path.splitext(os.path.basename(file))
@@ -33,16 +43,16 @@ def run_command_windows(file, input):
         # Get report in json format and write it to report_file
         cov = subprocess.run(['coverage', 'json', '--pretty', '--data-file', data_file, '-o', report_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
-        # Call mutation function
+        # Call update function
         with open(report_file) as report:
             coverage_data = json.load(report)
-            mutator(result.returncode, coverage_data, input)
-            available_files.put(file)
+            update(result.returncode, coverage_data, input, mutationFn)
+        available_files.put(file)
         return result
     except subprocess.CalledProcessError as e:
         print(f"Error executing command '{file}':\n{e.stderr}")
 
-def run_command(file, input):
+def run_command(file, input, mutationFn):
     try:
         # Get basename for files
         base, _ = os.path.splitext(os.path.basename(file))
@@ -51,40 +61,48 @@ def run_command(file, input):
 
         # Run test with branch coverage, and write coverage data to data_file
         result = subprocess.run([f'coverage run --branch --data-file "{data_file}" "{file}" "{input}"'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        print(result.stdout)
-        print(result.stderr)
+
         # Get report in json format and write it to report_file
         cov = subprocess.run([f'coverage json --pretty --data-file "{data_file}" -o "{report_file}"'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        print(cov.stdout)
-        print(cov.stderr)
-        # Call mutation function
-        print("[before]report_file:", report_file)
-        print("[before]data_file:", data_file)
+
+        # Call update function
         with open(report_file) as report:
-            print("report_file:", report_file)
-            print("report:", report)
             coverage_data = json.load(report)
-            mutator(result.returncode, coverage_data, input)
-            available_files.put(file)
-            print("available_files:", available_files)
-        print("result:", result)
+            update(result.returncode, coverage_data, input, mutationFn)
+
+        available_files.put(file)
         return result
     except subprocess.CalledProcessError as e:
         print(f"Error executing command '{file}':\n{e.stderr}")
 
-def mutator(return_code, coverage_data, input):
-    # TODO: Modify `INPUTS` list based on the test results
-    # See example 'sample_report.json' to get schema
-
-    # Update count of failed tests
+def update(return_code, coverage_data, input, mutationFn):
     global n_fails
+    global feedback
+    global mutator
+    global INPUTS
+    global FAILED_INPUTS
+    global SUCCESSFUL_INPUTS
+
+    #get coverage data for the test file
+    cov = [c for c in coverage_data["files"].values()]
+
+    # Update count of failed tests, get feedback and update inputs
     if return_code != 0:
         n_fails += 1
+        FAILED_INPUTS.append(input)
+        feedback.update(cov[0])
+        INPUTS.add(input)
+        mutator.update_mutations(mutationFn)
+    else:
+        SUCCESSFUL_INPUTS.append(input)
+        if feedback.get_feedback(cov[0]):
+            INPUTS.add(input)
+            mutator.update_mutations(mutationFn)
 
 
 def get_next_input():
     # TODO: Select next input to run test on
-    return random.choice(INPUTS)
+    return random.choice(list(INPUTS))
 
 def main():
     parser = argparse.ArgumentParser()
@@ -93,6 +111,12 @@ def main():
     parser.add_argument("--timeout", type=int, default=5, help="Duration of fuzzing")
     args = parser.parse_args()
 
+    global feedback
+    feedback = fb.fuzzerFeedback()
+
+    global mutator
+    mutator = mt.Mutations()
+    
     # Create temporary copies so we can parallelize the execution
     # Copies needed because only one worker can execute the same test file at a time
     for _ in range(args.workers):
@@ -104,7 +128,7 @@ def main():
 
     # Read starting inputs from directory
     for input in read_inputs(INPUT_DIR):
-        INPUTS.append(input)
+        INPUTS.add(input)
 
     # Populate the available files queue
     for file in FILE_PATHS:
@@ -112,25 +136,33 @@ def main():
 
     futures = []
     START_TIME = time.time()
+    ELAPSED_TIME = 0
 
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
+        progress_bar = tqdm(total=args.timeout, desc="Fuzzing Progress", unit="ticks")
         while time.time() - START_TIME < args.timeout:
+            LATEST_TIME = time.time()
             # Gets next available file or blocks until a new one is enqueued
             cur_file = available_files.get(block=True)
-            print("cur_file:", cur_file)
 
             # Get next input
             next_input = get_next_input()
 
+            # Get next mutator
+            mutationFn = mutator.select_mutation_function()
+            
             # Mutate input
-            next_input = mutations.select_mutation_function()(next_input)
-            print("next_input:", next_input)
+            next_input = mutationFn(next_input)
 
             # Submit each command to the ThreadPoolExecutor
             if platform.system() == 'Windows':
-                futures.append(executor.submit(run_command_windows, cur_file, next_input))
+                futures.append(executor.submit(run_command_windows, cur_file, next_input, mutationFn))
             else:
-                futures.append(executor.submit(run_command, cur_file, next_input))
+                futures.append(executor.submit(run_command, cur_file, next_input, mutationFn))
+
+            prev = ELAPSED_TIME
+            ELAPSED_TIME += time.time() - LATEST_TIME
+            progress_bar.update(time.time() - LATEST_TIME if ELAPSED_TIME <= args.timeout else args.timeout - prev)
 
         # Wait for all remaining to complete
         for future in futures:
@@ -142,7 +174,13 @@ def main():
 
     # Delete data files and reports
     cleanup(available_files)
-
+    progress_bar.close()
+    write_inputs(SUCCESSFUL_INPUTS, FAILED_INPUTS, args.test)
+    print(f"Tested {len(SUCCESSFUL_INPUTS) + len(FAILED_INPUTS)} inputs")
+    print("Feedback: ",
+          "\n  lines covered: ", feedback.lines,
+          "\n  branches covered: ", feedback.branches,
+          "\n  highest coverage: ", feedback.percentage ,"%")
     print(f'Found {n_fails} fails')
 
 if __name__ == "__main__":
