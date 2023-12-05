@@ -14,6 +14,7 @@ FILE_PATHS = []
 INPUTS = []
 INPUT_DIR = 'inputs/'
 TEST_DIR = 'tests/'
+CWD = os.getcwd()
 
 n_fails = 0
 
@@ -23,20 +24,30 @@ def run_command(file, input):
     try:
         # Get basename for files
         base, _ = os.path.splitext(os.path.basename(file))
-        data_file = base + '.coverage'
-        report_file = base + '.json'
+        print("root", base)
+        print("ext", _)
+        data_file = os.path.join(CWD, base + ".coverage")
+        report_file = os.path.join(CWD, base + ".json")
 
         # Run test with branch coverage, and write coverage data to data_file
-        result = subprocess.run(['coverage', 'run', '--branch', '--data-file', data_file, file, input], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-
+        result = subprocess.run([f'coverage run --branch --data-file "{data_file}" "{file}" "{input}"'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        print(result.stdout)
+        print(result.stderr)
         # Get report in json format and write it to report_file
-        cov = subprocess.run(['coverage', 'json', '--pretty', '--data-file', data_file, '-o', report_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-
+        cov = subprocess.run([f'coverage json --pretty --data-file "{data_file}" -o "{report_file}"'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        print(cov.stdout)
+        print(cov.stderr)
         # Call mutation function
+        print("[before]report_file:", report_file)
+        print("[before]data_file:", data_file)
         with open(report_file) as report:
+            print("report_file:", report_file)
+            print("report:", report)
             coverage_data = json.load(report)
             mutator(result.returncode, coverage_data, input)
             available_files.put(file)
+            print("available_files:", available_files)
+        print("result:", result)
         return result
     except subprocess.CalledProcessError as e:
         print(f"Error executing command '{file}':\n{e.stderr}")
@@ -86,12 +97,14 @@ def main():
         while time.time() - START_TIME < args.timeout:
             # Gets next available file or blocks until a new one is enqueued
             cur_file = available_files.get(block=True)
+            print("cur_file:", cur_file)
 
             # Get next input
             next_input = get_next_input()
 
             # Mutate input
             next_input = mutations.select_mutation_function()(next_input)
+            print("next_input:", next_input)
 
             # Submit each command to the ThreadPoolExecutor
             futures.append(executor.submit(run_command, cur_file, next_input))

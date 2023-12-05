@@ -19,6 +19,7 @@ class TemporaryCopy(object):
         new_base_name = f"{base_name}_{unique_id}{file_extension}"
         self.path = os.path.join(temp_dir, new_base_name)
         shutil.copy2(self.original_path, self.path)
+        print("__enter__: self.path", self.path)
         return self.path
 
     def __exit__(self, exc_type, exc_val, exc_tb):
